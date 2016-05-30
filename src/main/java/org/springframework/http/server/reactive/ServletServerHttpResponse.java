@@ -20,6 +20,7 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
@@ -68,7 +69,10 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 	}
 
 	@Override
-	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
+	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector) {
+		if (flushSelector != null) {
+			return Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		}
 		return this.responseBodyWriter.apply(publisher);
 	}
 

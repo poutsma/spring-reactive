@@ -16,6 +16,7 @@
 
 package org.springframework.http.server.reactive;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.reactivestreams.Publisher;
@@ -71,7 +72,7 @@ public class MockServerHttpResponse implements ServerHttpResponse {
 	}
 
 	@Override
-	public Mono<Void> writeWith(Publisher<DataBuffer> body) {
+	public Mono<Void> writeWith(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
 		this.body = body;
 		return Flux.from(this.body).then();
 	}

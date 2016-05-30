@@ -16,6 +16,8 @@
 
 package org.springframework.http.server.reactive;
 
+import java.util.function.Predicate;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -63,10 +65,14 @@ public class RxNettyServerHttpResponse extends AbstractServerHttpResponse {
 	}
 
 	@Override
-	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
-		Observable<ByteBuf> content =
-				RxJava1ObservableConverter.from(publisher).map(this::toByteBuf);
-		Observable<Void> completion = this.response.write(content);
+	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
+		Observable<ByteBuf> content = RxJava1ObservableConverter.from(body).map(this::toByteBuf);
+		Observable<Void> completion =
+				(flushSelector == null ?
+						this.response.write(content) :
+						this.response.write(content, byteBuf ->
+								flushSelector.test(((NettyDataBufferFactory)bufferFactory()).wrap(byteBuf)))
+				);
 		return RxJava1ObservableConverter.from(completion).then();
 	}
 

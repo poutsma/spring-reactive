@@ -19,6 +19,7 @@ package org.springframework.http.client.reactive;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
@@ -77,8 +78,10 @@ public class RxNettyClientHttpRequest extends AbstractClientHttpRequest {
 	 * @see #execute()
 	 */
 	@Override
-	public Mono<Void> writeWith(Publisher<DataBuffer> body) {
-
+	public Mono<Void> writeWith(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
+		if (flushSelector != null) {
+			Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		}
 		this.body = RxJava1ObservableConverter.from(Flux.from(body)
 				.map(b -> dataBufferFactory.wrap(b.asByteBuffer()).getNativeBuffer()));
 

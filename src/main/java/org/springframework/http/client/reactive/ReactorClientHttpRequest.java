@@ -18,6 +18,7 @@ package org.springframework.http.client.reactive;
 
 import java.net.URI;
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -89,8 +90,10 @@ public class ReactorClientHttpRequest extends AbstractClientHttpRequest {
 	 * @see #execute()
 	 */
 	@Override
-	public Mono<Void> writeWith(Publisher<DataBuffer> body) {
-
+	public Mono<Void> writeWith(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
+		if (flushSelector != null) {
+			Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		}
 		this.body = Flux.from(body).map(this::toByteBuf);
 		return Mono.empty();
 	}

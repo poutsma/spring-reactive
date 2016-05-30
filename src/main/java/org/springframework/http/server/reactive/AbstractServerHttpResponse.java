@@ -19,6 +19,7 @@ package org.springframework.http.server.reactive;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.reactivestreams.Publisher;
@@ -57,6 +58,7 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 
 	private final DataBufferFactory dataBufferFactory;
 
+
 	public AbstractServerHttpResponse(DataBufferFactory dataBufferFactory) {
 		Assert.notNull(dataBufferFactory, "'dataBufferFactory' must not be null");
 
@@ -89,9 +91,9 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 	}
 
 	@Override
-	public Mono<Void> writeWith(Publisher<DataBuffer> publisher) {
-		return new ChannelSendOperator<>(publisher, writePublisher ->
-						applyBeforeCommit().then(() -> writeWithInternal(writePublisher)));
+	public Mono<Void> writeWith(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
+		return new ChannelSendOperator<>(body, writePublisher ->
+						applyBeforeCommit().then(() -> writeWithInternal(writePublisher, flushSelector)));
 	}
 
 	protected Mono<Void> applyBeforeCommit() {
@@ -129,8 +131,9 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 	/**
 	 * Implement this method to write to the underlying the response.
 	 * @param body the publisher to write with
+	 * @param flushSelector the predicate that control when the data are flushed
 	 */
-	protected abstract Mono<Void> writeWithInternal(Publisher<DataBuffer> body);
+	protected abstract Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector);
 
 	@Override
 	public void beforeCommit(Supplier<? extends Mono<Void>> action) {

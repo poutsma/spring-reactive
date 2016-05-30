@@ -17,6 +17,7 @@
 package org.springframework.http.server.reactive;
 
 import java.io.File;
+import java.util.function.Predicate;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -65,7 +66,10 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 	}
 
 	@Override
-	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
+	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector) {
+		if (flushSelector != null) {
+			Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		}
 		return this.channel.send(Flux.from(publisher).map(this::toByteBuf));
 	}
 

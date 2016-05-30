@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.junit.Test;
 import org.reactivestreams.Publisher;
@@ -166,7 +167,7 @@ public class ServerHttpResponseTests {
 		}
 
 		@Override
-		protected Mono<Void> writeWithInternal(Publisher<DataBuffer> body) {
+		protected Mono<Void> writeWithInternal(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector) {
 			return Flux.from(body).map(b -> {
 				this.body.add(b);
 				return b;

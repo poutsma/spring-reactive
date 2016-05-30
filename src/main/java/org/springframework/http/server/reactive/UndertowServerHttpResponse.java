@@ -23,6 +23,7 @@ import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.Cookie;
@@ -79,7 +80,10 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 	}
 
 	@Override
-	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
+	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector) {
+		if (flushSelector != null) {
+			return Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		}
 		return this.responseBodyWriter.apply(publisher);
 	}
 

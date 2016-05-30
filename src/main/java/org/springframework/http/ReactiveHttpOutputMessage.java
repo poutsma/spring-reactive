@@ -16,6 +16,7 @@
 
 package org.springframework.http;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.reactivestreams.Publisher;
@@ -49,8 +50,23 @@ public interface ReactiveHttpOutputMessage extends HttpMessage {
 	 *
 	 * @param body the body content publisher
 	 * @return a publisher that indicates completion or error.
+	 * @see #writeWith(Publisher, Predicate)
 	 */
-	Mono<Void> writeWith(Publisher<DataBuffer> body);
+	default Mono<Void> writeWith(Publisher<DataBuffer> body) {
+		return writeWith(body, null);
+	}
+
+	/**
+	 * Use the given {@link Publisher} to write the body of the message to the underlying
+	 * HTTP layer, and use the provided flush selector to control when the data is flushed
+	 * over the network.
+	 *
+	 * @param body the body content publisher
+	 * @param flushSelector a predicate that return {@code true} if the {@link DataBuffer}
+	 *        parameter should be flushed.
+	 * @return a publisher that indicates completion or error.
+	 */
+	Mono<Void> writeWith(Publisher<DataBuffer> body, Predicate<DataBuffer> flushSelector);
 
 	/**
 	 * Returns a {@link DataBufferFactory} that can be used for creating the body.
