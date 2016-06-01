@@ -19,7 +19,7 @@ package org.springframework.http.server.reactive;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -47,11 +47,12 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
 	private final HttpServletResponse response;
 
-	private final Function<Publisher<DataBuffer>, Mono<Void>> responseBodyWriter;
+	private final BiFunction<Publisher<DataBuffer>, Predicate<DataBuffer>, Mono<Void>>
+			responseBodyWriter;
 
 	public ServletServerHttpResponse(HttpServletResponse response,
 			DataBufferFactory dataBufferFactory,
-			Function<Publisher<DataBuffer>, Mono<Void>> responseBodyWriter) {
+			BiFunction<Publisher<DataBuffer>, Predicate<DataBuffer>, Mono<Void>> responseBodyWriter) {
 		super(dataBufferFactory);
 		Assert.notNull(response, "'response' must not be null");
 		Assert.notNull(responseBodyWriter, "'responseBodyWriter' must not be null");
@@ -70,10 +71,10 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
 	@Override
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector) {
-		if (flushSelector != null) {
-			return Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		if (flushSelector == null) {
+			flushSelector = db -> false;
 		}
-		return this.responseBodyWriter.apply(publisher);
+		return this.responseBodyWriter.apply(publisher, flushSelector);
 	}
 
 	@Override

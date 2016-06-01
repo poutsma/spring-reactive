@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -53,11 +54,12 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 
 	private final StreamSinkChannel responseChannel;
 
-	private final Function<Publisher<DataBuffer>, Mono<Void>> responseBodyWriter;
+	private final BiFunction<Publisher<DataBuffer>, Predicate<DataBuffer>, Mono<Void>>
+			responseBodyWriter;
 
 	public UndertowServerHttpResponse(HttpServerExchange exchange,
 			StreamSinkChannel responseChannel,
-			Function<Publisher<DataBuffer>, Mono<Void>> responseBodyWriter,
+			BiFunction<Publisher<DataBuffer>, Predicate<DataBuffer>, Mono<Void>> responseBodyWriter,
 			DataBufferFactory dataBufferFactory) {
 		super(dataBufferFactory);
 		Assert.notNull(exchange, "'exchange' is required.");
@@ -81,10 +83,10 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 
 	@Override
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher, Predicate<DataBuffer> flushSelector) {
-		if (flushSelector != null) {
-			return Mono.error(new UnsupportedOperationException()); // TODO Not implemented yet
+		if (flushSelector == null) {
+			flushSelector = db -> false;
 		}
-		return this.responseBodyWriter.apply(publisher);
+		return this.responseBodyWriter.apply(publisher, flushSelector);
 	}
 
 	@Override

@@ -18,6 +18,7 @@ package org.springframework.http.server.reactive;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Predicate;
 import javax.servlet.AsyncContext;
 import javax.servlet.ReadListener;
 import javax.servlet.ServletException;
@@ -97,8 +98,10 @@ public class ServletHttpHandlerAdapter extends HttpServlet {
 		responseBody.registerListener();
 		ServletServerHttpResponse response =
 				new ServletServerHttpResponse(servletResponse, dataBufferFactory,
-						publisher -> Mono
-								.from(subscriber -> publisher.subscribe(responseBody)));
+						(publisher, flushSelector) -> Mono.from(subscriber -> {
+							responseBody.setFlushSelector(flushSelector);
+							publisher.subscribe(responseBody);
+						}));
 
 		HandlerResultSubscriber resultSubscriber =
 				new HandlerResultSubscriber(synchronizer);
@@ -248,6 +251,8 @@ public class ServletHttpHandlerAdapter extends HttpServlet {
 
 		private Subscription subscription;
 
+		private Predicate<DataBuffer> flushSelector;
+
 		public ResponseBodySubscriber(ServletAsyncContextSynchronizer synchronizer,
 				int bufferSize) {
 			this.synchronizer = synchronizer;
@@ -256,6 +261,10 @@ public class ServletHttpHandlerAdapter extends HttpServlet {
 
 		public void registerListener() throws IOException {
 			synchronizer.getResponse().getOutputStream().setWriteListener(writeListener);
+		}
+
+		public void setFlushSelector(Predicate<DataBuffer> flushSelector) {
+			this.flushSelector = flushSelector;
 		}
 
 		@Override
@@ -330,6 +339,7 @@ public class ServletHttpHandlerAdapter extends HttpServlet {
 
 						logger.trace("written: " + written + " total: " + total);
 						if (written == total) {
+							flush(output);
 							releaseBuffer();
 							if (!completed) {
 								subscription.request(1);
@@ -359,6 +369,19 @@ public class ServletHttpHandlerAdapter extends HttpServlet {
 				}
 
 				return bytesWritten;
+			}
+
+			private void flush(ServletOutputStream output) {
+				if (output.isReady() &&
+						flushSelector != null &&
+						flushSelector.test(dataBuffer)) {
+					logger.trace("Flushing");
+					try {
+						output.flush();
+					}
+					catch (IOException ignored) {
+					}
+				}
 			}
 
 			private void releaseBuffer() {
