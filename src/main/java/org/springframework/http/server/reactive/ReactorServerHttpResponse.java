@@ -28,6 +28,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.io.netty.http.HttpChannel;
 
+import org.springframework.core.io.Flushable;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.NettyDataBuffer;
@@ -66,7 +67,11 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 
 	@Override
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
-		return this.channel.send(Flux.from(publisher).map(this::toByteBuf));
+		return Flux.from(publisher)
+				.window()
+				.concatMap(w -> this.channel.send(w.takeUntil(db -> db instanceof Flushable).map(this::toByteBuf)))
+				.then();
+
 	}
 
 	@Override
