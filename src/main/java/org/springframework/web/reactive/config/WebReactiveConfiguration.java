@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.web.reactive.config;
 
 import java.util.ArrayList;
@@ -42,7 +43,6 @@ import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.SseEventEncoder;
 import org.springframework.http.codec.json.JacksonJsonDecoder;
 import org.springframework.http.codec.json.JacksonJsonEncoder;
 import org.springframework.http.codec.xml.Jaxb2Decoder;
@@ -50,6 +50,7 @@ import org.springframework.http.codec.xml.Jaxb2Encoder;
 import org.springframework.http.converter.reactive.CodecHttpMessageConverter;
 import org.springframework.http.converter.reactive.HttpMessageConverter;
 import org.springframework.http.converter.reactive.ResourceHttpMessageConverter;
+import org.springframework.http.converter.reactive.SseEventHttpMessageConverter;
 import org.springframework.util.ClassUtils;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
@@ -257,7 +258,7 @@ public class WebReactiveConfiguration implements ApplicationContextAware {
 		} else {
 
 		}
-		converters.add(converter(new SseEventEncoder(sseDataEncoders), null));
+		converters.add(new SseEventHttpMessageConverter(sseDataEncoders));
 	}
 
 	private static <T> HttpMessageConverter<T> converter(Encoder<T> encoder, Decoder<T> decoder) {

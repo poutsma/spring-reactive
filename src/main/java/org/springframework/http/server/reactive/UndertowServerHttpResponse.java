@@ -28,6 +28,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.Cookie;
 import io.undertow.server.handlers.CookieImpl;
 import io.undertow.util.HttpString;
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.xnio.ChannelListener;
 import org.xnio.channels.StreamSinkChannel;
@@ -55,6 +56,8 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 
 	private final HttpServerExchange exchange;
 
+	private StreamSinkChannel responseChannel;
+
 	public UndertowServerHttpResponse(HttpServerExchange exchange,
 			DataBufferFactory dataBufferFactory) {
 		super(dataBufferFactory);
@@ -78,32 +81,40 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
 		Assert.state(this.bodyProcessor == null,
 				"Response body publisher is already provided");
-		try {
-			synchronized (this.bodyProcessorMonitor) {
-				if (this.bodyProcessor == null) {
-					this.bodyProcessor = createBodyProcessor();
-				}
-				else {
-					throw new IllegalStateException(
-							"Response body publisher is already provided");
-				}
+		synchronized (this.bodyProcessorMonitor) {
+			if (this.bodyProcessor == null) {
+				this.bodyProcessor = createBodyProcessor();
 			}
-			return Mono.from(subscriber -> {
-				publisher.subscribe(this.bodyProcessor);
-				this.bodyProcessor.subscribe(subscriber);
-			});
+			else {
+				throw new IllegalStateException(
+						"Response body publisher is already provided");
+			}
 		}
-		catch (IOException ex) {
-			return Mono.error(ex);
-		}
+		return Mono.from(subscriber -> {
+			publisher.subscribe(this.bodyProcessor);
+			this.bodyProcessor.subscribe(subscriber);
+		});
 	}
 
-	private ResponseBodyProcessor createBodyProcessor() throws IOException {
-		ResponseBodyProcessor bodyProcessor = new ResponseBodyProcessor(this.exchange);
+	@Override
+	protected Mono<Void> writeAndFlushWithInternal(
+			Publisher<Publisher<DataBuffer>> body) {
+		return Mono.from(subscriber -> {
+			ResponseBodyFlushProcessor processor = new ResponseBodyFlushProcessor();
+			body.subscribe(processor);
+			processor.subscribe(subscriber);
+		});
+	}
+
+	private ResponseBodyProcessor createBodyProcessor() {
+		if (this.responseChannel == null) {
+			this.responseChannel = this.exchange.getResponseChannel();
+		}
+		ResponseBodyProcessor bodyProcessor =
+				new ResponseBodyProcessor(this.responseChannel);
 		bodyProcessor.registerListener();
 		return bodyProcessor;
 	}
-
 
 	@Override
 	public Mono<Void> writeWith(File file, long position, long count) {
@@ -161,8 +172,9 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 
 		private volatile ByteBuffer byteBuffer;
 
-		public ResponseBodyProcessor(HttpServerExchange exchange) {
-			this.responseChannel = exchange.getResponseChannel();
+		public ResponseBodyProcessor(StreamSinkChannel responseChannel) {
+			Assert.notNull(responseChannel, "'responseChannel' must not be null");
+			this.responseChannel = responseChannel;
 		}
 
 		public void registerListener() {
@@ -228,4 +240,24 @@ public class UndertowServerHttpResponse extends AbstractServerHttpResponse
 		}
 
 	}
+
+	private class ResponseBodyFlushProcessor extends AbstractResponseBodyFlushProcessor {
+
+		@Override
+		protected Processor<DataBuffer, Void> createBodyProcessor() {
+			return UndertowServerHttpResponse.this.createBodyProcessor();
+		}
+
+		@Override
+		protected void flush() throws IOException {
+			if (responseChannel != null) {
+				if (logger.isTraceEnabled()) {
+					logger.trace("flush");
+				}
+				responseChannel.flush();
+			}
+		}
+
+	}
+
 }

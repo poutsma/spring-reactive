@@ -79,6 +79,12 @@ public class MockServerHttpResponse implements ServerHttpResponse {
 	}
 
 	@Override
+	public Mono<Void> writeAndFlushWith(Publisher<Publisher<DataBuffer>> body) {
+		// TODO: implement
+		return null;
+	}
+
+	@Override
 	public void beforeCommit(Supplier<? extends Mono<Void>> action) {
 	}
 

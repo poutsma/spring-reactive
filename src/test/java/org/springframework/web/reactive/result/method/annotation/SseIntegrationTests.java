@@ -16,12 +16,9 @@
 
 package org.springframework.web.reactive.result.method.annotation;
 
-import static org.springframework.web.client.reactive.ClientWebRequestBuilders.*;
-import static org.springframework.web.client.reactive.ResponseExtractors.*;
-
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Before;
@@ -35,16 +32,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.codec.ByteBufferDecoder;
 import org.springframework.core.codec.ByteBufferEncoder;
-import org.springframework.core.codec.Encoder;
 import org.springframework.core.codec.StringDecoder;
 import org.springframework.core.codec.StringEncoder;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.http.codec.SseEventEncoder;
 import org.springframework.http.codec.json.JacksonJsonDecoder;
 import org.springframework.http.codec.json.JacksonJsonEncoder;
 import org.springframework.http.converter.reactive.CodecHttpMessageConverter;
 import org.springframework.http.converter.reactive.HttpMessageConverter;
+import org.springframework.http.converter.reactive.SseEventHttpMessageConverter;
 import org.springframework.http.server.reactive.AbstractHttpHandlerIntegrationTests;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +50,9 @@ import org.springframework.web.reactive.DispatcherHandler;
 import org.springframework.web.reactive.config.WebReactiveConfiguration;
 import org.springframework.web.reactive.sse.SseEvent;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
+
+import static org.springframework.web.client.reactive.ClientWebRequestBuilders.get;
+import static org.springframework.web.client.reactive.ResponseExtractors.bodyStream;
 
 /**
  * @author Sebastien Deleuze
@@ -179,8 +178,8 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
 		@Override
 		protected void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
-			Encoder<Object> sseEncoder = new SseEventEncoder(Arrays.asList(new JacksonJsonEncoder()));
-			converters.add(new CodecHttpMessageConverter<>(sseEncoder));
+			converters.add(new SseEventHttpMessageConverter(
+					Collections.singletonList(new JacksonJsonEncoder())));
 		}
 	}
 

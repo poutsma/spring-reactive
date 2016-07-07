@@ -24,7 +24,6 @@ import io.netty.handler.codec.http.cookie.DefaultCookie;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.io.netty.http.HttpClient;
 import reactor.io.netty.http.HttpClientRequest;
 
 import org.springframework.core.io.buffer.DataBuffer;
@@ -75,6 +74,12 @@ public class ReactorClientHttpRequest extends AbstractClientHttpRequest {
 	public Mono<Void> writeWith(Publisher<DataBuffer> body) {
 		return applyBeforeCommit()
 				.then(httpRequest.send(Flux.from(body).map(this::toByteBuf)));
+	}
+
+	@Override
+	public Mono<Void> writeAndFlushWith(Publisher<Publisher<DataBuffer>> body) {
+		return Mono.error(new UnsupportedOperationException());
+		// TODO: implement
 	}
 
 	@Override

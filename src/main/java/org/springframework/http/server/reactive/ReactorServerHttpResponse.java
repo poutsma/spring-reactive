@@ -30,7 +30,6 @@ import reactor.io.netty.http.HttpChannel;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
-import org.springframework.core.io.buffer.FlushingDataBuffer;
 import org.springframework.core.io.buffer.NettyDataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -39,7 +38,6 @@ import org.springframework.util.Assert;
 
 /**
  * Adapt {@link ServerHttpResponse} to the Reactor Net {@link HttpChannel}.
- *
  * @author Stephane Maldini
  * @author Rossen Stoyanchev
  */
@@ -48,7 +46,6 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 
 	private final HttpChannel channel;
 
-
 	public ReactorServerHttpResponse(HttpChannel response,
 			DataBufferFactory dataBufferFactory) {
 		super(dataBufferFactory);
@@ -56,11 +53,9 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 		this.channel = response;
 	}
 
-
 	public HttpChannel getReactorChannel() {
 		return this.channel;
 	}
-
 
 	@Override
 	protected void writeStatusCode() {
@@ -72,12 +67,15 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 
 	@Override
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
-		return Flux.from(publisher)
-				.window()
-				.concatMap(w -> this.channel.send(w
-						.takeUntil(db -> db instanceof FlushingDataBuffer)
-						.map(this::toByteBuf)))
-				.then();
+		Publisher<ByteBuf> body = toByteBufs(publisher);
+		return this.channel.send(body);
+	}
+
+	@Override
+	protected Mono<Void> writeAndFlushWithInternal(
+			Publisher<Publisher<DataBuffer>> chunks) {
+		return Flux.from(chunks).
+				map(chunk -> this.channel.send(toByteBufs(chunk))).then();
 	}
 
 	@Override
@@ -106,7 +104,12 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 		}
 	}
 
-	private ByteBuf toByteBuf(DataBuffer buffer) {
+	private static Publisher<ByteBuf> toByteBufs(Publisher<DataBuffer> dataBuffers) {
+		return Flux.from(dataBuffers).
+				map(ReactorServerHttpResponse::toByteBuf);
+	}
+
+	private static ByteBuf toByteBuf(DataBuffer buffer) {
 		if (buffer instanceof NettyDataBuffer) {
 			return ((NettyDataBuffer) buffer).getNativeBuffer();
 		}

@@ -55,6 +55,8 @@ public interface ReactiveHttpOutputMessage extends HttpMessage {
 	 */
 	Mono<Void> writeWith(Publisher<DataBuffer> body);
 
+	Mono<Void> writeAndFlushWith(Publisher<Publisher<DataBuffer>> body);
+
 	/**
 	 * Returns a {@link DataBufferFactory} that can be used for creating the body.
 	 * @return a buffer factory
